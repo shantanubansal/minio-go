@@ -42,7 +42,23 @@ func mustGetSystemCertPool() *x509.CertPool {
 // http.DefaultTransport but with additional param  DisableCompression
 // is set to true to avoid decompressing content with 'gzip' encoding.
 var DefaultTransport = func(secure bool) (*http.Transport, error) {
-	tr := &http.Transport{
+	return DefaultTransportWithTls(secure, nil)
+}
+var DefaultTransportWithTls = func(secure bool, config *tls.Config) (*http.Transport, error) {
+	tr := getTransport()
+	if secure {
+		if config == nil {
+			tr.TLSClientConfig = getDefaultTlsConfig()
+		} else {
+			tr.TLSClientConfig = config
+		}
+
+	}
+	return tr, nil
+}
+
+func getTransport() *http.Transport {
+	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -62,22 +78,23 @@ var DefaultTransport = func(secure bool) (*http.Transport, error) {
 		//    https://golang.org/src/net/http/transport.go?h=roundTrip#L1843
 		DisableCompression: true,
 	}
+}
 
-	if secure {
-		tr.TLSClientConfig = &tls.Config{
-			// Can't use SSLv3 because of POODLE and BEAST
-			// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
-			// Can't use TLSv1.1 because of RC4 cipher usage
-			MinVersion: tls.VersionTLS12,
-		}
-		if f := os.Getenv("SSL_CERT_FILE"); f != "" {
-			rootCAs := mustGetSystemCertPool()
-			data, err := ioutil.ReadFile(f)
-			if err == nil {
-				rootCAs.AppendCertsFromPEM(data)
-			}
-			tr.TLSClientConfig.RootCAs = rootCAs
-		}
+func getDefaultTlsConfig() *tls.Config {
+	ts := &tls.Config{
+		// Can't use SSLv3 because of POODLE and BEAST
+		// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
+		// Can't use TLSv1.1 because of RC4 cipher usage
+		MinVersion: tls.VersionTLS12,
 	}
-	return tr, nil
+
+	if f := os.Getenv("SSL_CERT_FILE"); f != "" {
+		rootCAs := mustGetSystemCertPool()
+		data, err := ioutil.ReadFile(f)
+		if err == nil {
+			rootCAs.AppendCertsFromPEM(data)
+		}
+		ts.RootCAs = rootCAs
+	}
+	return ts
 }

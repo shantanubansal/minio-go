@@ -20,6 +20,7 @@ package minio
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -99,6 +100,7 @@ type Client struct {
 type Options struct {
 	Creds        *credentials.Credentials
 	Secure       bool
+	TlsConfig    *tls.Config
 	Transport    http.RoundTripper
 	Region       string
 	BucketLookup BucketLookupType
@@ -271,7 +273,7 @@ func privateNew(endpoint string, opts *Options) (*Client, error) {
 
 	transport := opts.Transport
 	if transport == nil {
-		transport, err = DefaultTransport(opts.Secure)
+		transport, err = DefaultTransportWithTls(opts.Secure, opts.TlsConfig)
 		if err != nil {
 			return nil, err
 		}
