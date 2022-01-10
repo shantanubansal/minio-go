@@ -20,7 +20,6 @@ package minio
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -98,12 +97,12 @@ type Client struct {
 
 // Options for New method
 type Options struct {
-	Creds        *credentials.Credentials
-	Secure       bool
-	TlsConfig    *tls.Config
-	Transport    http.RoundTripper
-	Region       string
-	BucketLookup BucketLookupType
+	Creds                 *credentials.Credentials
+	Secure                bool
+	InsecureSkipVerifyTls *bool
+	Transport             http.RoundTripper
+	Region                string
+	BucketLookup          BucketLookupType
 
 	// Custom hash routines. Leave nil to use standard.
 	CustomMD5    func() md5simd.Hasher
@@ -273,7 +272,7 @@ func privateNew(endpoint string, opts *Options) (*Client, error) {
 
 	transport := opts.Transport
 	if transport == nil {
-		transport, err = DefaultTransportWithTls(opts.Secure, opts.TlsConfig)
+		transport, err = DefaultTransportWithInsecureSkipVerifyTls(opts.Secure, opts.InsecureSkipVerifyTls)
 		if err != nil {
 			return nil, err
 		}
